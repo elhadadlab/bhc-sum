@@ -114,7 +114,7 @@ if __name__ == '__main__':
     parser.add_argument('--hf_name', default='allenai/led-large-16384', choices=[
         'allenai/led-large-16384',
         'tau/bart-large-sled',
-        'google/long-t5-tglobal-large',
+        'google/long-t5-tglobal-base',
         # PageSum
     ])
 
