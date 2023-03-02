@@ -1,0 +1,16 @@
+absl-py
+datasets
+matplotlib
+nltk
+pandas
+p-tqdm
+pytorch-lightning
+py-sled
+regex
+rouge_score
+scipy
+spacy
+scikit-learn
+transformers
+wandb
+ujson
