@@ -69,7 +69,6 @@ def run(args):
         callbacks.append(lr_monitor)
     trainer = pl.Trainer.from_argparse_args(
         args,
-        resume_from_checkpoint=args.restore_path,
         callbacks=callbacks,
         logger=logger,
         strategy=None if args.cpu else 'deepspeed_stage_2',  # 'ddp'
@@ -85,8 +84,11 @@ def run(args):
         max_steps=args.max_steps,
     )
 
-    print('Starting training...')
-    trainer.fit(model, datamodule=datamodule)
+    if args.ckpt_path is None:
+        print('Starting training...')
+    else:
+        print(f'Starting training from {args.ckpt_path}...')
+    trainer.fit(model, datamodule=datamodule, ckpt_path=args.ckpt_path)
     print(f'Best weights saved --> {checkpoint_callback.best_model_path}')
 
 
@@ -94,7 +96,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('BHC Summarization trainer.')
     parser.add_argument('--data_dir', default=os.path.expanduser('~'))
     parser.add_argument('--experiment', default='default')
-    parser.add_argument('--restore_path', default=None)
+    parser.add_argument('--ckpt_path', default=None)
     parser.add_argument('--seed', default=1992, type=int)
     parser.add_argument('--max_steps', default=100000, type=int)
     parser.add_argument('--warmup', default=2000, type=int)

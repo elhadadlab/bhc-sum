@@ -19,6 +19,7 @@ class Summarizer(pl.LightningModule):
         self.save_hyperparameters(args)
         self.tokenizer = tokenizer
         # assert self.hparams.max_input_length <= self.tokenizer.model_max_length
+        print(f'Loading {hf_name}')
         if 'allenai/led' in hf_name:
             kwargs = {'gradient_checkpointing': True}
             self.model = AutoModelForSeq2SeqLM.from_pretrained(hf_name, **kwargs)
