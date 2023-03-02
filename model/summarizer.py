@@ -5,7 +5,7 @@ from deepspeed.ops.adam import DeepSpeedCPUAdam
 import numpy as np
 from sled import SledForConditionalGeneration
 import torch
-from transformers import AutoModel, AutoModelForSeq2SeqLM
+from transformers import AutoModel, AutoModelForSeq2SeqLM, LongT5ForConditionalGeneration
 from transformers.optimization import get_linear_schedule_with_warmup
 from transformers.trainer_pt_utils import LabelSmoother
 
@@ -24,6 +24,10 @@ class Summarizer(pl.LightningModule):
             self.model = AutoModelForSeq2SeqLM.from_pretrained(hf_name, **kwargs)
         elif 'sled' in hf_name:
             self.model = AutoModelForSeq2SeqLM.from_pretrained(hf_name)
+        elif 't5' in hf_name:
+            self.model = LongT5ForConditionalGeneration.from_pretrained(hf_name)
+        else:
+            raise Exception(f'Unrecognized HF model -> {hf_name}')
         # If we restore from reviser checkpoint or perturber checkpoint there will be extra tokens not in bart-base
         # see perturber.main and ref_reviser.main for additional tokens
         self.model.resize_token_embeddings(len(tokenizer))

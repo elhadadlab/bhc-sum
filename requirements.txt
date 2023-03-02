@@ -1,5 +1,7 @@
 absl-py
 datasets
+deepspeed
+evaluate
 matplotlib
 nltk
 pandas
