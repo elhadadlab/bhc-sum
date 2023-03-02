@@ -23,8 +23,12 @@ def dump(example, split_dir, note_meta_df):
 
     example_idx = example['idx']
     out_fn = os.path.join(split_dir, f'{example_idx}.json')
+    if os.path.exists(out_fn):
+        print('Already done. Skipping.')
+        return 0
     with open(out_fn, 'w') as fd:
         ujson.dump(row, fd)
+    return 1
 
 
 if __name__ == '__main__':
