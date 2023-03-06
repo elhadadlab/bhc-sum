@@ -5,7 +5,7 @@ import pandas as pd
 from p_tqdm import p_uimap
 import ujson
 
-from data.utils import extract_sorted_notes_from_html, transform_text
+from data.utils import extract_sorted_notes_from_html, sents_from_html
 
 
 def dump(example, split_dir, note_meta_df):
@@ -14,8 +14,8 @@ def dump(example, split_dir, note_meta_df):
         note_meta_df['note_id'].isin(set(source_note_ids))].sort_values(by='created_time').to_dict('records')
     source_html = extract_sorted_notes_from_html(example['source'], source_note_meta)
 
-    source_str = transform_text(source_html, include_header=True, include_title=True)
-    target_str = transform_text(example['reference'], include_header=False, include_title=False)
+    source_str = sents_from_html(source_html)
+    target_str = sents_from_html(example['reference'])
     row = {
         'article': source_str,
         'abstract': target_str,

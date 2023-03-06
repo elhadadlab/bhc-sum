@@ -13,6 +13,11 @@ def get_attr(tag, attr):
     return re.search(r'\s' + attr + r'=([^ ]+)', tag).group(1).strip('<>: ')
 
 
+def sents_from_html(html_str):
+    tps = html_str.split('<SEP>')
+    return [tps[idx + 1] for idx, tp in enumerate(tps) if tp.startswith('<s') and idx + 1 < len(tps)]
+
+
 def extract_sorted_notes_from_html(html, note_meta):
     notes = {}
     source_tps = html.split('<SEP>')
