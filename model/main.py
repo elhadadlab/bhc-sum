@@ -115,6 +115,7 @@ if __name__ == '__main__':
         'allenai/led-large-16384',
         'tau/bart-large-sled',
         'google/long-t5-tglobal-base',
+        'google/pegasus-x-large',
         # PageSum
     ])
 
