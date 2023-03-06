@@ -33,8 +33,10 @@ def dump(example, split_dir, note_meta_df):
 
 if __name__ == '__main__':
     fn = os.path.expanduser(os.path.join('~', 'bhc_data_10000_filt.csv'))
+    print(f'Reading in {fn}')
     df = pd.read_csv(fn)
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
+    print('Reading in note meta...')
     note_meta_df = pd.read_csv(note_meta_fn)
 
     for split in ['train', 'validation', 'test']:
@@ -45,6 +47,7 @@ if __name__ == '__main__':
         if bhc_split == 'validation':
             bhc_split = 'val'
         split_dir = os.path.expanduser(os.path.join('~', 'bhc', 'base', bhc_split))
+        os.makedirs(split_dir, exist_ok=True)
         statuses = list(p_uimap(lambda example: dump(example, split_dir, note_meta_df), records))
         print(sum(statuses))
     print('Fini!')
