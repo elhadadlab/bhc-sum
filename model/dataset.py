@@ -6,7 +6,7 @@ import pandas as pd
 import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 
-from utils import Seq2SeqCollate, split_into_notes
+from model.utils import Seq2SeqCollate, split_into_notes
 from data.utils import extract_sorted_notes_from_html, transform_text
 
 
