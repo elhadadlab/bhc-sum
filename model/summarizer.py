@@ -49,18 +49,16 @@ class Summarizer(pl.LightningModule):
         stats['rouge_mean'] = np.array(list(stats.values())).mean()
         return stats
 
-    def shared_generate(self, batch, num_beams=1, length_penalty=4.0):
+    def shared_generate(self, batch, **gen_kwargs):
         kwargs = {
             'input_ids': batch['input_ids'],
             'attention_mask': batch['attention_mask'],
             'use_cache': True,
-            'num_beams': num_beams,
-            'min_length': 64,
             'max_length': self.hparams.max_output_length,
             'no_repeat_ngram_size': 3,
             'early_stopping': True,
-            'length_penalty': length_penalty
         }
+        kwargs.update(**gen_kwargs)
 
         if 'global_attention_mask' in batch:
             kwargs['global_attention_mask'] = batch['global_attention_mask']
@@ -75,7 +73,12 @@ class Summarizer(pl.LightningModule):
         output = self.model(**batch)
         loss = output.loss
 
-        generated_str, gold_str = self.shared_generate(batch)
+        gen_kwargs = {
+            'num_beams': 1,
+            'min_length': 64,
+        }
+
+        generated_str, gold_str = self.shared_generate(batch, **gen_kwargs)
         metrics = self.rouge_metrics(generated_str, gold_str)
         for k, v in metrics.items():
             if v is None:
