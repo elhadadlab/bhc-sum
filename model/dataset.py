@@ -153,7 +153,7 @@ class SummarizationDataset(Dataset):
         source_html = extract_sorted_notes_from_html(example['source'], source_note_meta)
 
         curr_note_idx = None
-        if self.notes_to_select != 'partial':
+        if self.notes_to_select == 'partial':
             notes = split_into_notes(source_html)
             n = len(notes)
             assert n == len(re.findall('</d>', source_html))
