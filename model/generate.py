@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_length', default=64, type=int)
     parser.add_argument('--max_length', default=512, type=int)
     parser.add_argument('--length_penalty', default=2.0, type=float)
-    parser.add_argument('--num_beams', default=4.0, type=float)
+    parser.add_argument('--num_beams', default=4, type=int)
     parser.add_argument('--hf_name', default='allenai/led-large-16384', choices=[
         'allenai/led-large-16384',
         'tau/bart-large-sled',
