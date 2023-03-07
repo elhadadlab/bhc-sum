@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     gen_kwargs = {
         'length_penalty': args.length_penalty,
-        'min_length': args.length_penalty,
+        'min_length': args.min_length,
         'max_length': args.max_length,
         'num_beams': args.num_beams,
     }
