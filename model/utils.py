@@ -1,3 +1,6 @@
+from glob import glob
+import os
+from pathlib import Path
 import random
 import subprocess
 
@@ -23,6 +26,34 @@ def set_same_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
     print(f'Set random, numpy and torch seeds to {seed}')
+
+
+def split_into_notes(html_str):
+    tps = html_str.split('<SEP>')
+    notes = []
+    curr_note = []
+    for tp in tps:
+        curr_note.append(tp)
+        if tp == '</d>':
+            notes.append('<SEP>'.join(curr_note))
+            curr_note = []
+    return notes
+
+
+def get_path_from_exp(weights_dir, experiment, last=False):
+    dir = os.path.join(weights_dir, experiment)
+    paths = list(map(str, list(Path(dir).rglob('pytorch_model.bin'))))
+    if last:
+        return [p for p in paths if 'last' in p][0]
+    paths = [p for p in paths if 'last' not in p]
+    if len(paths) == 0:
+        raise Exception(f'No weights found in {dir}')
+    elif len(paths) == 1:
+        return str(paths[0])
+    else:
+        print('\n'.join([str(x) for x in paths]))
+        raise Exception('Multiple possible weights found.  Please remove one or specify the path with --restore_path')
+
 
 
 class Seq2SeqCollate:

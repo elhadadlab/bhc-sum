@@ -10,21 +10,7 @@ from transformers import AutoTokenizer
 
 from model.dataset import SummaryDataModule
 from model.summarizer import Summarizer
-
-
-def get_path_from_exp(weights_dir, experiment, last=False):
-    dir = os.path.join(weights_dir, experiment)
-    paths = list(map(str, list(Path(dir).rglob('pytorch_model.bin'))))
-    if last:
-        return [p for p in paths if 'last' in p][0]
-    paths = [p for p in paths if 'last' not in p]
-    if len(paths) == 0:
-        raise Exception(f'No weights found in {dir}')
-    elif len(paths) == 1:
-        return str(paths[0])
-    else:
-        print('\n'.join([str(x) for x in paths]))
-        raise Exception('Multiple possible weights found.  Please remove one or specify the path with --restore_path')
+from utils import get_path_from_exp
 
 
 if __name__ == '__main__':
@@ -110,10 +96,7 @@ if __name__ == '__main__':
     outputs['example_id'] = outputs['patient_id'].astype(str) + '_' + outputs['visit_id'].astype(str)
 
     max_n_suffix = '' if args.max_examples is None else '_' + str(args.max_examples)
-    if args.human_only and args.split != 'test':
-        out_fn = os.path.join(results_dir, f'predictions_{args.split}.csv')
-    else:
-        out_fn = os.path.join(results_dir, f'predictions{mini_str}{max_n_suffix}.csv')
+    out_fn = os.path.join(results_dir, f'predictions{mini_str}{max_n_suffix}.csv')
     print(f'Saving {len(outputs)} ROUGE scores and predictions to {out_fn}')
     outputs.to_csv(out_fn, index=False)
     num_col = outputs.select_dtypes('number')

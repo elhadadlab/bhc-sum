@@ -13,21 +13,9 @@ from sled import SledTokenizer
 
 from dataset import SummaryDataModule
 from summarizer import Summarizer
-from utils import set_same_seed
+from utils import set_same_seed, get_path_from_exp
 
 torch.set_float32_matmul_precision('medium')  # | 'high')
-
-
-def get_path_from_exp(weights_dir, experiment):
-    dir = os.path.join(weights_dir, experiment)
-    paths = list(Path(dir).rglob('*.ckpt'))
-    if len(paths) == 0:
-        raise Exception(f'No weights found in {dir}')
-    elif len(paths) == 1:
-        return str(paths[0])
-    else:
-        print('\n'.join([str(x) for x in paths]))
-        raise Exception('Multiple possible weights found.  Please remove one or specify the path with --restore_path')
 
 
 def run(args):
