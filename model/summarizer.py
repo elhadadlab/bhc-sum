@@ -115,10 +115,10 @@ class Summarizer(pl.LightningModule):
 
         return [optimizer], [lr_scheduler]
 
-    def predict_step(self, batch, batch_idx=None):
+    def predict_step(self, batch, batch_idx=None, **gen_kwargs):
         visit_id = batch.pop('visit_id')[0]
         patient_id = batch.pop('patient_id')[0]
-        generated_str, gold_str = self.shared_generate(batch, num_beams=4, length_penalty=4.0)
+        generated_str, gold_str = self.shared_generate(batch, **gen_kwargs)
         outputs = {'patient_id': patient_id, 'visit_id': visit_id}
         outputs.update(self.rouge_metrics(generated_str, gold_str))
         source = self.tokenizer.batch_decode(batch['input_ids'].tolist(), skip_special_tokens=True)[0]
