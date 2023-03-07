@@ -101,6 +101,6 @@ class Seq2SeqCollate:
         batch['labels'] = outputs.input_ids
         # We have to make sure that the PAD token is ignored
         batch['labels'][torch.where(batch['labels'] == 1)] = -100
-        for col in self.add_cols:
+        for col in self.add_cols + ['curr_note_idx']:
             batch[col] = [x[col] for x in batch_list]
         return batch

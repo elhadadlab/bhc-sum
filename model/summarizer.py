@@ -37,6 +37,7 @@ class Summarizer(pl.LightningModule):
         self.label_smoother = LabelSmoother(epsilon=0.1)
 
     def training_step(self, batch, batch_idx):
+        batch.pop('curr_note_idx')
         output = self.model(**batch, use_cache=False)
         loss = output.loss
         self.log('train/loss', loss, on_epoch=False, on_step=True, prog_bar=True, sync_dist=True)
@@ -70,6 +71,7 @@ class Summarizer(pl.LightningModule):
         return generated_str, gold_str
 
     def validation_step(self, batch, batch_idx):
+        batch.pop('curr_note_idx')
         output = self.model(**batch)
         loss = output.loss
 
@@ -121,8 +123,9 @@ class Summarizer(pl.LightningModule):
     def predict_step(self, batch, batch_idx=None, **gen_kwargs):
         visit_id = batch.pop('visit_id')[0]
         patient_id = batch.pop('patient_id')[0]
+        curr_note_idx = batch.pop('curr_note_idx')[0]
         generated_str, gold_str = self.shared_generate(batch, **gen_kwargs)
-        outputs = {'patient_id': patient_id, 'visit_id': visit_id}
+        outputs = {'patient_id': patient_id, 'visit_id': visit_id, 'curr_note_idx': curr_note_idx}
         outputs.update(self.rouge_metrics(generated_str, gold_str))
         source = self.tokenizer.batch_decode(batch['input_ids'].tolist(), skip_special_tokens=True)[0]
         outputs['source'] = source
