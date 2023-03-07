@@ -57,7 +57,7 @@ if __name__ == '__main__':
         args.experiment = args.wandb_name
 
     weight_dir = os.path.join(args.data_dir, 'bhc_weights')
-    ckpt_path = get_path_from_exp(weight_dir, args.experiment_dir)
+    ckpt_path = get_path_from_exp(weight_dir, args.experiment)
 
     results_dir = os.path.join(weight_dir, args.experiment, 'results')
     os.makedirs(results_dir, exist_ok=True)
