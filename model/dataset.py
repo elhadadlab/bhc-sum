@@ -45,7 +45,7 @@ class SummaryDataModule(pl.LightningDataModule):
         records = train_df.to_dict('records')
 
         train_split = SummarizationDataset(
-            self.note_meta_df, records, 'train', self.max_input_length, self.notes_to_select
+            self.note_meta_df, records, self.max_input_length, self.notes_to_select
         )
 
         collate_fn = Seq2SeqCollate(
@@ -65,7 +65,7 @@ class SummaryDataModule(pl.LightningDataModule):
     def predict_dataloader(self):
         records = self.data_df[self.data_df['split'] == 'test'].to_dict('records')
         test_split = SummarizationDataset(
-            self.note_meta_df, records, 'test', self.max_input_length, self.notes_to_select
+            self.note_meta_df, records, self.max_input_length, self.notes_to_select
         )
         collate_fn = Seq2SeqCollate(
             self.tokenizer,
@@ -89,7 +89,7 @@ class SummaryDataModule(pl.LightningDataModule):
             test_df = test_df.sample(n=max_examples, replace=False, random_state=1992)
         records = test_df.to_dict('records')
         test_split = SummarizationDataset(
-            self.note_meta_df, records, split, self.max_input_length, self.notes_to_select, add_cols=add_cols
+            self.note_meta_df, records, self.max_input_length, self.notes_to_select, add_cols=add_cols
         )
         collate_fn = Seq2SeqCollate(
             self.tokenizer,
@@ -133,10 +133,9 @@ class SummaryDataModule(pl.LightningDataModule):
 
 
 class SummarizationDataset(Dataset):
-    def __init__(self, note_meta_df, examples, split, max_input_length, notes_to_select, add_cols=None):
+    def __init__(self, note_meta_df, examples, max_input_length, notes_to_select, add_cols=None):
         super(SummarizationDataset, self).__init__()
         self.examples = examples
-        self.split = split
         self.max_input_length = max_input_length
         self.add_cols = [] if add_cols is None else add_cols
         self.note_meta_df = note_meta_df
