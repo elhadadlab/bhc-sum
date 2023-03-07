@@ -60,9 +60,6 @@ if __name__ == '__main__':
     }
 
     mini_str = '_mini' if args.debug else ''
-    if args.experiment is None:
-        args.experiment = args.wandb_name
-
     weight_dir = os.path.join(args.data_dir, 'bhc_weights')
     ckpt_path = get_path_from_exp(weight_dir, args.experiment)
 
@@ -79,7 +76,7 @@ if __name__ == '__main__':
 
     print(f'Loading model from {ckpt_path}...')
     model = Summarizer.load_from_checkpoint(
-        checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=False).to(args.device).eval()
+        checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=True).to(args.device).eval()
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
