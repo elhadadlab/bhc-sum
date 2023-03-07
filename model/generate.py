@@ -75,8 +75,15 @@ if __name__ == '__main__':
     tokenizer.add_special_tokens(special_tokens_dict)
 
     print(f'Loading model from {ckpt_path}...')
-    model = Summarizer.load_from_checkpoint(
-        checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=True).to(args.device).eval()
+    # model = Summarizer.load_from_checkpoint(
+    #     checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=True).to(args.device).eval()
+    model = Summarizer(args, tokenizer=tokenizer, hf_name=args.hf_name).eval()
+
+    weights = torch.load(ckpt_path)
+    weights = {k.replace('_forward_module.', ''): v for k, v in weights.items()}
+
+    model = model.to(args.device)
+    model.load_state_dict(weights)
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
