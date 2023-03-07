@@ -156,7 +156,10 @@ class SummarizationDataset(Dataset):
             notes = split_into_notes(source_html)
             n = len(notes)
             assert n == len(re.findall('</d>', source_html))
-            curr_note_idx = int(np.random.randint(1, n))
+            if n == 1:
+                curr_note_idx = 1
+            else:
+                curr_note_idx = int(np.random.randint(1, n))
             partial_notes = notes[:curr_note_idx]
             source_html = '<SEP>'.join(partial_notes)
 

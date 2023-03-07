@@ -55,7 +55,6 @@ def get_path_from_exp(weights_dir, experiment, last=False):
         raise Exception('Multiple possible weights found.  Please remove one or specify the path with --restore_path')
 
 
-
 class Seq2SeqCollate:
     def __init__(self, tokenizer, add_global_att, max_input_length=16348, max_output_length=512, add_cols=None):
         self.tokenizer = tokenizer

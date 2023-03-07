@@ -24,10 +24,6 @@ class SummaryDataModule(pl.LightningDataModule):
             data_fn = os.path.join(args.data_dir, DATA_FN)
         print(f'Reading in dataset from {data_fn}')
         self.data_df = pd.read_csv(data_fn)
-
-        # Partial Data
-        results = os.path.join(args.data_dir, 'bhc_weights', args.partial_experiment)
-
         self.max_val_num = max_val_num
         self.note_meta_df = note_meta_df
         self.tokenizer = tokenizer
@@ -43,10 +39,22 @@ class SummaryDataModule(pl.LightningDataModule):
         self.max_output_length = args.max_output_length
         self.batch_size = 1
         self.notes_to_select = notes_to_select
+        self.partial_experiment = args.partial_experiment
 
     def train_dataloader(self):
         train_df = self.data_df[self.data_df['split'] == 'train']
         records = train_df.to_dict('records')
+
+        # Partial Data
+        results = os.path.join(
+            self.data_dir, 'bhc_weights', self.partial_experiment, 'results', 'partial_predictions_train.csv'
+        )
+        partials = pd.read_csv(results)
+        exid2partial = dict(zip(partials['example_id'], partials['prediction']))
+        exid2curr = dict(zip(partials['example_id'], partials['curr_note_idx']))
+        for record in records:
+            record['partial'] = exid2partial[record['example_id']]
+            record['curr_note_idx'] = exid2curr[record['example_id']]
 
         train_split = SummarizationDataset(
             self.note_meta_df, records, self.max_input_length, self.notes_to_select
@@ -155,20 +163,16 @@ class SummarizationDataset(Dataset):
             self.note_meta_df['note_id'].isin(set(source_note_ids))].sort_values(by='created_time').to_dict('records')
         source_html = extract_sorted_notes_from_html(example['source'], source_note_meta)
 
-        curr_note_idx = None
-        if self.notes_to_select == 'partial':
-            notes = split_into_notes(source_html)
-            n = len(notes)
-            assert n == len(re.findall('</d>', source_html))
-            curr_note_idx = int(np.random.randint(1, n))
-            partial_notes = notes[:curr_note_idx]
-            source_html = '<SEP>'.join(partial_notes)
-
-        source_str = transform_text(source_html, include_header=True, include_title=True)
+        notes = split_into_notes(source_html)
+        curr_note_idx = example['curr_note_idx']
+        single_source = notes[curr_note_idx]
+        partial_str = example['partial']
+        source_str = transform_text(single_source, include_header=True, include_title=True)
         target_str = transform_text(example['reference'], include_header=False, include_title=False)
         row = {
             'curr_note_idx': curr_note_idx,
             'source': source_str,
+            'partial': partial_str,
             'target': target_str,
         }
 

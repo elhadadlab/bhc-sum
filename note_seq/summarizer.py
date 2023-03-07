@@ -36,9 +36,36 @@ class Summarizer(pl.LightningModule):
         self.rouge = load('rouge')
         self.label_smoother = LabelSmoother(epsilon=0.1)
 
+    def encode_both(self, batch):
+        partial_inputs = {
+            'input_ids': batch.pop('partial_input_ids'),
+            'global_attention_mask': batch.pop('partial_global_attention_mask')
+        }
+
+        source_inputs = {
+            'input_ids': batch.pop('input_ids'),
+            'global_attention_mask': batch.pop('global_attention_mask')
+        }
+        partial_h = self.model.led.encoder(**partial_inputs)
+        source_h = self.model.led.encoder(**source_inputs)
+
+        encoder_outputs = torch.cat([
+            partial_h,
+            source_h
+        ], dim=-2)
+        return encoder_outputs
+
     def training_step(self, batch, batch_idx):
         batch.pop('curr_note_idx')
-        output = self.model(**batch, use_cache=False)
+
+        encoder_outputs = self.encode_both(batch)
+
+        decoder_inputs = {
+            'encoder_outputs': encoder_outputs,
+            'labels': batch['labels']
+        }
+
+        output = self.model(**decoder_inputs, use_cache=False)
         loss = output.loss
         self.log('train/loss', loss, on_epoch=False, on_step=True, prog_bar=True, sync_dist=True)
         smooth_loss = self.label_smoother(output, batch['labels'])
@@ -52,8 +79,7 @@ class Summarizer(pl.LightningModule):
 
     def shared_generate(self, batch, **gen_kwargs):
         kwargs = {
-            'input_ids': batch['input_ids'],
-            'attention_mask': batch['attention_mask'],
+            'encoder_outputs': batch['encoder_outputs'],
             'use_cache': True,
             'max_length': self.hparams.max_output_length,
             'no_repeat_ngram_size': 3,
@@ -61,8 +87,6 @@ class Summarizer(pl.LightningModule):
         }
         kwargs.update(**gen_kwargs)
 
-        if 'global_attention_mask' in batch:
-            kwargs['global_attention_mask'] = batch['global_attention_mask']
         generated_ids = self.model.generate(**kwargs)
         generated_str = self.tokenizer.batch_decode(generated_ids.tolist(), skip_special_tokens=True)
         output_ids = batch['labels']
@@ -72,7 +96,15 @@ class Summarizer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         batch.pop('curr_note_idx')
-        output = self.model(**batch)
+
+        encoder_outputs = self.encode_both(batch)
+
+        decoder_inputs = {
+            'encoder_outputs': encoder_outputs,
+            'labels': batch['labels']
+        }
+
+        output = self.model(**decoder_inputs)
         loss = output.loss
 
         gen_kwargs = {
@@ -80,7 +112,7 @@ class Summarizer(pl.LightningModule):
             'min_length': 64,
         }
 
-        generated_str, gold_str = self.shared_generate(batch, **gen_kwargs)
+        generated_str, gold_str = self.shared_generate(decoder_inputs, **gen_kwargs)
         metrics = self.rouge_metrics(generated_str, gold_str)
         for k, v in metrics.items():
             if v is None:
