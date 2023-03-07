@@ -83,7 +83,7 @@ if __name__ == '__main__':
     weights = {k.replace('_forward_module.', ''): v for k, v in weights.items()}
 
     model = model.to(args.device)
-    model.load_state_dict(weights)
+    model.load_state_dict(weights, strict=False)
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
