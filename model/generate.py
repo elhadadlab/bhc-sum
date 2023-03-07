@@ -39,6 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', default=0, type=int)
 
     parser.add_argument('--max_input_length', type=int, default=16384)
+    parser.add_argument('--max_output_length', type=int, default=512)
     parser.add_argument('--min_length', default=64, type=int)
     parser.add_argument('--max_length', default=512, type=int)
     parser.add_argument('--length_penalty', default=2.0, type=float)
