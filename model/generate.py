@@ -42,6 +42,13 @@ if __name__ == '__main__':
     parser.add_argument('--max_length', default=512, type=int)
     parser.add_argument('--length_penalty', default=2.0, type=float)
     parser.add_argument('--num_beams', default=4.0, type=float)
+    parser.add_argument('--hf_name', default='allenai/led-large-16384', choices=[
+        'allenai/led-large-16384',
+        'tau/bart-large-sled',
+        'google/long-t5-tglobal-base',
+        'google/pegasus-x-large',
+        # PageSum
+    ])
 
     args = parser.parse_args()
 
@@ -62,8 +69,8 @@ if __name__ == '__main__':
     results_dir = os.path.join(weight_dir, args.experiment, 'results')
     os.makedirs(results_dir, exist_ok=True)
 
-    print(f'Loading tokenizer from {args.hf_model}...')
-    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=args.hf_model)
+    print(f'Loading tokenizer from {args.hf_name}...')
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=args.hf_name)
 
     print('Adding <doc-sep> as an additional special token...')
     add_tokens = ['<doc-sep>']
@@ -72,7 +79,7 @@ if __name__ == '__main__':
 
     print(f'Loading model from {ckpt_path}...')
     model = Summarizer.load_from_checkpoint(
-        checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_model=args.hf_model, strict=False).to(args.device).eval()
+        checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=False).to(args.device).eval()
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
