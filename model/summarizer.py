@@ -121,6 +121,7 @@ class Summarizer(pl.LightningModule):
     def predict_step(self, batch, batch_idx=None, **gen_kwargs):
         visit_id = batch.pop('visit_id')[0]
         patient_id = batch.pop('patient_id')[0]
+        print(batch['input_ids'][0, :10])
         generated_str, gold_str = self.shared_generate(batch, **gen_kwargs)
         outputs = {'patient_id': patient_id, 'visit_id': visit_id}
         outputs.update(self.rouge_metrics(generated_str, gold_str))
