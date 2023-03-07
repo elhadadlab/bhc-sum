@@ -88,7 +88,7 @@ if __name__ == '__main__':
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
     note_meta_df = pd.read_csv(note_meta_fn)
-    datamodule = SummaryDataModule(args, note_meta_df, tokenizer=tokenizer, max_val_num=args.max_val_num)
+    datamodule = SummaryDataModule(args, note_meta_df, tokenizer=tokenizer)
 
     model.on_predict_start()
     dataloader = datamodule.test_dataloader(
