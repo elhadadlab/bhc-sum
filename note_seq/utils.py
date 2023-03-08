@@ -1,7 +1,7 @@
 import torch
 
 
-class Seq2SeqCollate:
+class Note2NoteCollate:
     def __init__(self, tokenizer, add_global_att, max_input_length=16348, max_output_length=512, add_cols=None):
         self.tokenizer = tokenizer
         self.max_input_length = max_input_length

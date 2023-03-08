@@ -1,12 +1,12 @@
 import os
 import regex as re
 
-import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 
-from model.utils import Seq2SeqCollate, split_into_notes
+from model.utils import split_into_notes
+from note_seq.utils import Note2NoteCollate
 from data.utils import extract_sorted_notes_from_html, transform_text
 
 
@@ -41,31 +41,39 @@ class SummaryDataModule(pl.LightningDataModule):
         self.notes_to_select = notes_to_select
         self.partial_experiment = args.partial_experiment
 
+    def get_partials(self, split_df, partial_df):
+        records = split_df.to_dict('records')
+        exid2partial = dict(zip(partial_df['example_id'], partial_df['prediction']))
+        exid2curr = dict(zip(partial_df['example_id'], partial_df['curr_note_idx']))
+        partial_records = []
+        for record in records:
+            example_id = record.get('example_id', str(record['patient_id']) + '_' + str(record['visit_id']))
+            if example_id in exid2partial:
+                record['partial'] = exid2partial[example_id]
+                record['curr_note_idx'] = exid2curr[example_id]
+                partial_records.append(record)
+        return partial_records
+
     def train_dataloader(self):
         train_df = self.data_df[self.data_df['split'] == 'train']
-        records = train_df.to_dict('records')
 
         # Partial Data
         results = os.path.join(
-            self.data_dir, 'bhc_weights', self.partial_experiment, 'results', 'partial_predictions_train.csv'
+            self.data_dir, 'bhc_weights', self.partial_experiment, 'results', 'partial_predictions_train_10000.csv'
         )
         partials = pd.read_csv(results)
-        exid2partial = dict(zip(partials['example_id'], partials['prediction']))
-        exid2curr = dict(zip(partials['example_id'], partials['curr_note_idx']))
-        for record in records:
-            record['partial'] = exid2partial[record['example_id']]
-            record['curr_note_idx'] = exid2curr[record['example_id']]
-
+        partial_records = self.get_partials(train_df, partials)
         train_split = SummarizationDataset(
-            self.note_meta_df, records, self.max_input_length, self.notes_to_select
+            self.note_meta_df, partial_records, self.max_input_length, self.notes_to_select
         )
 
-        collate_fn = Seq2SeqCollate(
+        collate_fn = Note2NoteCollate(
             self.tokenizer,
             add_global_att='allenai/led' in self.hf_name,
             max_input_length=self.max_input_length,
             max_output_length=self.max_output_length,
         )
+
         kwargs = {
             'batch_size': self.batch_size,
             'shuffle': True,
@@ -74,61 +82,23 @@ class SummaryDataModule(pl.LightningDataModule):
         }
         return DataLoader(train_split, **kwargs)
 
-    def predict_dataloader(self):
-        records = self.data_df[self.data_df['split'] == 'test'].to_dict('records')
-        test_split = SummarizationDataset(
-            self.note_meta_df, records, self.max_input_length, self.notes_to_select
-        )
-        collate_fn = Seq2SeqCollate(
-            self.tokenizer,
-            add_global_att='allenai/led' in self.hf_name,
-            max_input_length=self.max_input_length,
-            max_output_length=self.max_output_length,
-            add_cols=['example_id']
-        )
-        kwargs = {
-            'batch_size': self.batch_size,
-            'shuffle': False,
-            'num_workers': 1 if self.debug else self.num_workers,
-            'collate_fn': collate_fn
-        }
-        return DataLoader(test_split, **kwargs)
-
-    def test_dataloader(self, add_cols=None, max_examples=None, split='test'):
-        test_df = self.data_df[self.data_df['split'] == split]
-        if max_examples is not None and max_examples < len(test_df):
-            print(f'Subsampling {max_examples} examples from {len(test_df)}')
-            test_df = test_df.sample(n=max_examples, replace=False, random_state=1992)
-        records = test_df.to_dict('records')
-        test_split = SummarizationDataset(
-            self.note_meta_df, records, self.max_input_length, self.notes_to_select, add_cols=add_cols
-        )
-        collate_fn = Seq2SeqCollate(
-            self.tokenizer,
-            add_global_att='allenai/led' in self.hf_name,
-            max_input_length=self.max_input_length,
-            max_output_length=self.max_output_length,
-            add_cols=add_cols
-        )
-        kwargs = {
-            'batch_size': self.batch_size,
-            'shuffle': False,
-            'num_workers': 1 if self.debug else self.num_workers,
-            'collate_fn': collate_fn
-        }
-        return DataLoader(test_split, **kwargs)
-
     def val_dataloader(self, max_n=None, add_cols=None):
         val_df = self.data_df[self.data_df['split'] == 'validation']
         max_n = min(filter(None, [max_n, self.max_val_num]))
         if max_n is not None and max_n < len(val_df):
             print(f'Sampling {max_n} examples out of {len(val_df)}')
             val_df = val_df.sample(n=max_n, replace=False, random_state=1992)
-        records = val_df.to_dict('records')
-        val_split = SummarizationDataset(
-            self.note_meta_df, records, 'validation', self.max_input_length, self.notes_to_select
+
+        results = os.path.join(
+            self.data_dir, 'bhc_weights', self.partial_experiment, 'results', 'partial_predictions_validation_1024.csv'
         )
-        collate_fn = Seq2SeqCollate(
+        partials = pd.read_csv(results)
+        partial_records = self.get_partials(val_df, partials)
+
+        val_split = SummarizationDataset(
+            self.note_meta_df, partial_records, self.max_input_length, self.notes_to_select
+        )
+        collate_fn = Note2NoteCollate(
             self.tokenizer,
             add_global_att='allenai/led' in self.hf_name,
             max_input_length=self.max_input_length,

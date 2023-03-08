@@ -49,11 +49,9 @@ class Summarizer(pl.LightningModule):
         partial_h = self.model.led.encoder(**partial_inputs)
         source_h = self.model.led.encoder(**source_inputs)
 
-        encoder_outputs = torch.cat([
-            partial_h,
-            source_h
-        ], dim=-2)
-        return encoder_outputs
+        # Concatenate source encodings
+        partial_h.last_hidden_state = torch.cat([partial_h.last_hidden_state, source_h.last_hidden_state], dim=1)
+        return partial_h
 
     def training_step(self, batch, batch_idx):
         batch.pop('curr_note_idx')

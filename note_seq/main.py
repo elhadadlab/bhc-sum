@@ -13,7 +13,7 @@ from sled import SledTokenizer
 
 from dataset import SummaryDataModule
 from summarizer import Summarizer
-from utils import set_same_seed, get_path_from_exp
+from model.utils import get_path_from_exp, set_same_seed
 
 torch.set_float32_matmul_precision('medium')  # | 'high')
 
@@ -30,6 +30,13 @@ def run(args):
     tokenizer.add_special_tokens(special_tokens_dict)
 
     model = Summarizer(args, tokenizer=tokenizer, hf_name=args.hf_name)
+
+    weight_dir = os.path.join(args.data_dir, 'bhc_weights')
+    ckpt_path = get_path_from_exp(weight_dir, args.partial_experiment)
+    print(f'Loading model from {ckpt_path}...')
+    weights = torch.load(ckpt_path)
+    weights = {k.replace('_forward_module.', ''): v for k, v in weights.items()}
+    model.load_state_dict(weights, strict=False)
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     note_meta_df = pd.read_csv(note_meta_fn)
@@ -59,14 +66,14 @@ def run(args):
         args,
         callbacks=callbacks,
         logger=logger,
-        strategy=None if args.cpu else 'deepspeed_stage_2',  # 'ddp'
+        strategy=None,
         precision='bf16' if 'long-t5' in args.hf_name else 32 if args.cpu else 16,
         accelerator='cpu' if args.cpu else 'gpu',
-        devices='auto',
+        devices=1,
         default_root_dir=experiment_dir,
         gradient_clip_val=0.1,
         accumulate_grad_batches=args.grad_accum,
-        val_check_interval=1.0 if args.debug else 5000,
+        val_check_interval=1.0 if args.debug else 1000,
         num_sanity_val_steps=2,
         log_every_n_steps=5,
         max_steps=args.max_steps,
@@ -84,9 +91,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('BHC Summarization trainer.')
     parser.add_argument('--data_dir', default=os.path.expanduser('~'))
     parser.add_argument('--experiment', default='default')
+    parser.add_argument('--partial_experiment', default='led_v2')
     parser.add_argument('--ckpt_path', default=None)
     parser.add_argument('--seed', default=1992, type=int)
-    parser.add_argument('--max_steps', default=100000, type=int)
+    parser.add_argument('--max_steps', default=10000, type=int)
     parser.add_argument('--warmup', default=2000, type=int)
     parser.add_argument('-debug', default=False, action='store_true')
     parser.add_argument('-find_lr', default=False, action='store_true')
@@ -98,7 +106,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--max_output_length', type=int, default=1024)
     parser.add_argument('--max_input_length', type=int, default=16384)
-    parser.add_argument('--grad_accum', default=4, type=int)
+    parser.add_argument('--grad_accum', default=16, type=int)
     parser.add_argument('--hf_name', default='allenai/led-large-16384', choices=[
         'allenai/led-large-16384',
         'tau/bart-large-sled',

@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 import argparse
@@ -16,7 +15,7 @@ from utils import get_path_from_exp
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('LongFormer/BigBird Generator & Evaluator.')
     parser.add_argument('--data_dir', default=os.path.expanduser('~'))
-    parser.add_argument('--experiment', default=None)
+    parser.add_argument('--experiment', default='led_v2')
     parser.add_argument('-debug', default=False, action='store_true')
     parser.add_argument('-cpu', default=False, action='store_true')
     parser.add_argument('--gpu_device', default=None, type=int)
@@ -63,8 +62,6 @@ if __name__ == '__main__':
     tokenizer.add_special_tokens(special_tokens_dict)
 
     print(f'Loading model from {ckpt_path}...')
-    # model = Summarizer.load_from_checkpoint(
-    #     checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name, strict=True).to(args.device).eval()
     model = Summarizer(args, tokenizer=tokenizer, hf_name=args.hf_name).eval()
 
     weights = torch.load(ckpt_path)

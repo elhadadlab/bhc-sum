@@ -75,3 +75,28 @@ def transform_text(html_str, include_header=True, include_title=False):
                 curr_str += ' '
             curr_str += sent_str
     return curr_str.strip()
+
+
+def split_into_sections(html_str):
+    tps = html_str.split('<SEP>')
+    sections = []
+    curr_section_concept = ''
+    curr_section_sents = []
+    sent_idx_offset = 0
+    for tp_idx, tp in enumerate(tps):
+        if tp.startswith('<h'):
+            curr_section_concept = get_attr(tp, 'con')
+            curr_section_sents = []
+        elif tp.startswith('<s'):
+            # sent_body = remove_tags_from_sent(tps[tp_idx + 1].strip())
+            sent_body = tps[tp_idx + 1].strip()
+            curr_section_sents.append(sent_body)
+        elif tp == '</h>':
+            n = len(curr_section_sents)
+            sections.append({
+                'concept': curr_section_concept,
+                'sents': curr_section_sents,
+                'sent_idxs': list(range(sent_idx_offset, sent_idx_offset + n))
+            })
+            sent_idx_offset += n
+    return sections
