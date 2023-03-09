@@ -20,8 +20,12 @@ from data.utils import (
 )
 
 
-def generate_baseline(args, model, tokenizer, gen_kwargs, source_html, reference):
+def generate_baseline(args, model, tokenizer, gen_kwargs, source_html, reference, predicted_top_section=None):
     source = transform_text(source_html, include_header=True, include_title=True)
+
+    if not args.empty_init:
+        source = prepend_partial(predicted_top_section, source)
+
     inputs = tokenizer(
         [source],
         padding='do_not_pad',
@@ -186,9 +190,10 @@ if __name__ == '__main__':
         # PageSum
     ])
 
+    parser.add_argument('-oracle_data', default=False, action='store_true')
+
     parser.add_argument('-rejection', default=False, action='store_true')
     parser.add_argument('-empty_init', default=False, action='store_true')
-    parser.add_argument('-oracle_data', default=False, action='store_true')
     parser.add_argument('-oracle_init', default=False, action='store_true')
     parser.add_argument('-baseline', default=False, action='store_true')
 
@@ -286,18 +291,15 @@ if __name__ == '__main__':
     out_df['example_id'] = out_df['patient_id'].astype(str) + '_' + out_df['visit_id'].astype(str)
 
     mini_str = '_mini' if args.debug else ''
-    if args.baseline:
-        out_fn = os.path.join(results_dir, f'baseline{mini_str}.csv')
-    elif args.rejection:
-        if args.empty_init:
-            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_w_rejection_empty_init.csv')
-        else:
-            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_w_rejection.csv')
-    else:
-        if args.empty_init:
-            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_empty_init.csv')
-        else:
-            out_fn = os.path.join(results_dir, f'note_wise{mini_str}.csv')
+
+    baseline_str = '_baseline' if args.baseline else ''
+    empty_str = '_empty' if args.empty_init else ''
+    oracle_str = '_oracle' if args.oracle_init else ''
+    reject_str = '_rejection' if args.rejection else ''
+    out_fn = os.path.join(
+        results_dir, f'note_wise{baseline_str}{empty_str}{oracle_str}{reject_str}{mini_str}.csv'
+    )
+
     print(f'Saving {len(out_df)} ROUGE scores and predictions to {out_fn}')
     out_df.to_csv(out_fn, index=False)
     num_col = out_df.select_dtypes('number')
