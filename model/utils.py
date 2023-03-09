@@ -43,6 +43,8 @@ def split_into_notes(html_str):
 def get_path_from_exp(weights_dir, experiment, last=False):
     dir = os.path.join(weights_dir, experiment)
     paths = list(map(str, list(Path(dir).rglob('pytorch_model.bin'))))
+    if len(paths) == 0:
+        paths = list(map(str, list(Path(dir).rglob('*.ckpt'))))
     if last:
         return [p for p in paths if 'last' in p][0]
     paths = [p for p in paths if 'last' not in p]

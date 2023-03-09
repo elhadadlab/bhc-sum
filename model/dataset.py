@@ -10,8 +10,8 @@ from model.utils import Seq2SeqCollate, split_into_notes
 from data.utils import extract_sorted_notes_from_html, transform_text
 
 
-DATA_FN = 'bhc_data_10000_filt.csv'
-MINI_DATA_FN = 'bhc_mini_data_10000_filt.csv'
+DATA_FN = 'bhc_data_{}_filt.csv'
+MINI_DATA_FN = 'bhc_mini_data_{}_filt.csv'
 
 
 class SummaryDataModule(pl.LightningDataModule):
@@ -19,9 +19,9 @@ class SummaryDataModule(pl.LightningDataModule):
         super().__init__()
 
         if args.debug:
-            data_fn = os.path.join(args.data_dir, MINI_DATA_FN)
+            data_fn = os.path.join(args.data_dir, MINI_DATA_FN.format(args.data_max_toks))
         else:
-            data_fn = os.path.join(args.data_dir, DATA_FN)
+            data_fn = os.path.join(args.data_dir, DATA_FN.format(args.data_max_toks))
         print(f'Reading in dataset from {data_fn}')
         self.data_df = pd.read_csv(data_fn)
         self.max_val_num = max_val_num

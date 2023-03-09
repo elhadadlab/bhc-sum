@@ -54,20 +54,31 @@ def generate_baseline(args, model, tokenizer, gen_kwargs, source_html, reference
         return output
 
 
-def generate_notewise(args, model, tokenizer, gen_kwargs, source_html, reference):
+def generate_notewise(args, model, tokenizer, gen_kwargs, source_html, reference, predicted_top_section=None):
     notes = split_into_notes(source_html)
     n = len(notes)
-    # TODO change this to predicted
-    source_sections, section_rouges = score_sections(rouge, source_html, reference)
-    top_sec_idx = int(np.argmax([x['mean'] for x in section_rouges]))
-    top_sec = source_sections[top_sec_idx]
-    scores_by_time = [section_rouges[top_sec_idx]]
 
-    partial_sum = ' '.join(map(remove_tags_from_sent, top_sec['sents']))
+    if args.empty_init:
+        partial_sum = ''
+    else:
+        if args.oracle_init:
+            source_sections, section_rouges = score_sections(rouge, source_html, reference)
+            top_sec_idx = int(np.argmax([x['mean'] for x in section_rouges]))
+            top_sec = source_sections[top_sec_idx]
+            scores_by_time = [section_rouges[top_sec_idx]]
+            partial_sum = ' '.join(map(remove_tags_from_sent, top_sec['sents']))
+        else:
+            sec_sents = sents_from_html(predicted_top_section)
+            sec_tok = ' '.join(list(map(remove_tags_from_sent, sec_sents)))
+            score_obj = rouge.compute(references=[reference], predictions=[sec_tok], rouge_types=['rouge1', 'rouge2'])
+            score_obj['mean'] = (score_obj['rouge1'] + score_obj['rouge2']) / 2.0
+            scores_by_time = [score_obj]
+            partial_sum = sec_tok
 
-    for note_idx in range(n):
-        curr_note = notes[note_idx]
-        curr_note_str = transform_text(curr_note, include_header=True, include_title=True)
+    for start in range(0, n, args.note_window):
+        end = min(n, start + args.note_window)
+        curr_notes = notes[start:end]
+        curr_note_str = transform_text('<SEP>'.join(curr_notes), include_header=True, include_title=True)
         if len(partial_sum) > 0:
             updated_source = prepend_partial(partial_sum, curr_note_str)
         else:
@@ -77,7 +88,7 @@ def generate_notewise(args, model, tokenizer, gen_kwargs, source_html, reference
             [updated_source],
             padding='do_not_pad',
             truncation=True,
-            max_length=8192,
+            max_length=16384,
             return_tensors='pt'
         )
 
@@ -103,7 +114,7 @@ def generate_notewise(args, model, tokenizer, gen_kwargs, source_html, reference
             score_obj['mean'] = (score_obj['rouge1'] + score_obj['rouge2']) / 2.0
 
             # Oracle Rejection
-            if args.use_rejection:
+            if args.rejection:
                 # TODO replace with model
                 if score_obj['mean'] > max([x['mean'] for x in scores_by_time]):
                     partial_sum = generated_str
@@ -163,6 +174,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_input_length', type=int, default=16384)
     parser.add_argument('--max_output_length', type=int, default=512)
     parser.add_argument('--min_length', default=64, type=int)
+    parser.add_argument('--note_window', default=1, type=int)
     parser.add_argument('--max_length', default=512, type=int)
     parser.add_argument('--length_penalty', default=2.0, type=float)
     parser.add_argument('--num_beams', default=4, type=int)
@@ -174,7 +186,10 @@ if __name__ == '__main__':
         # PageSum
     ])
 
-    parser.add_argument('-use_rejection', default=False, action='store_true')
+    parser.add_argument('-rejection', default=False, action='store_true')
+    parser.add_argument('-empty_init', default=False, action='store_true')
+    parser.add_argument('-oracle_data', default=False, action='store_true')
+    parser.add_argument('-oracle_init', default=False, action='store_true')
     parser.add_argument('-baseline', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -206,26 +221,45 @@ if __name__ == '__main__':
     tokenizer.add_special_tokens(special_tokens_dict)
 
     print(f'Loading model from {ckpt_path}...')
-    model = Summarizer(args, tokenizer=tokenizer, hf_name=args.hf_name).eval()
-
-    weights = torch.load(ckpt_path)
-    weights = {k.replace('_forward_module.', ''): v for k, v in weights.items()}
+    if ckpt_path.endswith('ckpt'):
+        model = Summarizer.load_from_checkpoint(
+            checkpoint_path=ckpt_path, tokenizer=tokenizer, hf_name=args.hf_name
+        ).eval()
+    else:
+        model = Summarizer(args, tokenizer=tokenizer, hf_name=args.hf_name).eval()
+        weights = torch.load(ckpt_path)
+        weights = {k.replace('_forward_module.', ''): v for k, v in weights.items()}
+        model.load_state_dict(weights, strict=False)
 
     model = model.to(args.device)
-    model.load_state_dict(weights, strict=False)
     model.on_predict_start()
 
     note_meta_fn = os.path.join('/nlp/projects/summarization/kabupra/cumc/note_meta.csv')
     print(f'Loading in note meta information from {note_meta_fn}')
     note_meta_df = pd.read_csv(note_meta_fn)
 
-    if args.debug:
-        data_fn = os.path.join(args.data_dir, MINI_DATA_FN)
+    if args.oracle_data:
+        if args.debug:
+            data_fn = os.path.join(args.data_dir, MINI_DATA_FN)
+        else:
+            data_fn = os.path.join(args.data_dir, DATA_FN)
+        print(f'Reading in dataset from {data_fn}')
+        data_df = pd.read_csv(data_fn)
+        test_df = data_df[data_df['split'] == 'test']
     else:
-        data_fn = os.path.join(args.data_dir, DATA_FN)
-    print(f'Reading in dataset from {data_fn}')
-    data_df = pd.read_csv(data_fn)
-    test_df = data_df[data_df['split'] == 'test']
+        data_fn = os.path.join(args.data_dir, f'clinsum_test_10000_tokens.csv')
+        print(f'Reading in dataset from {data_fn}')
+        test_df = pd.read_csv(data_fn)
+
+        if args.debug:
+            oracle_mini = pd.read_csv(os.path.join(args.data_dir, MINI_DATA_FN))
+            oracle_mini['example_id'] = (
+                    oracle_mini['patient_id'].astype(str) + '_' + oracle_mini['visit_id'].astype(str)
+            )
+            eid = set(oracle_mini[oracle_mini['split'] == 'test']['example_id'])
+            test_df['example_id'] = test_df['patient_id'].astype(str) + '_' + test_df['visit_id'].astype(str)
+            test_df = test_df[test_df['example_id'].isin(eid)].reset_index(drop=True)
+
     if args.max_examples is not None:
         test_df = test_df.sample(n=args.max_examples, random_state=1992).reset_index(drop=True)
 
@@ -242,7 +276,10 @@ if __name__ == '__main__':
         final_predictions = []
 
         gen_func = generate_baseline if args.baseline else generate_notewise
-        outputs = gen_func(args, model, tokenizer, gen_kwargs, source_html, reference)
+        outputs = gen_func(
+            args, model, tokenizer, gen_kwargs, source_html, reference,
+            predicted_top_section=example.get('predicted_top_section', None)
+        )
         example.update(outputs)
 
     out_df = pd.DataFrame(records)
@@ -251,10 +288,16 @@ if __name__ == '__main__':
     mini_str = '_mini' if args.debug else ''
     if args.baseline:
         out_fn = os.path.join(results_dir, f'baseline{mini_str}.csv')
-    elif args.use_rejection:
-        out_fn = os.path.join(results_dir, f'note_wise{mini_str}_w_rejection.csv')
+    elif args.rejection:
+        if args.empty_init:
+            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_w_rejection_empty_init.csv')
+        else:
+            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_w_rejection.csv')
     else:
-        out_fn = os.path.join(results_dir, f'note_wise{mini_str}.csv')
+        if args.empty_init:
+            out_fn = os.path.join(results_dir, f'note_wise{mini_str}_empty_init.csv')
+        else:
+            out_fn = os.path.join(results_dir, f'note_wise{mini_str}.csv')
     print(f'Saving {len(out_df)} ROUGE scores and predictions to {out_fn}')
     out_df.to_csv(out_fn, index=False)
     num_col = out_df.select_dtypes('number')

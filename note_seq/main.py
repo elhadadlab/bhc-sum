@@ -100,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('-find_lr', default=False, action='store_true')
     parser.add_argument('-offline', default=False, action='store_true')
     parser.add_argument('--num_dataloaders', default=16, type=int)
-    parser.add_argument('--max_val_num', default=1024, type=int)
+    parser.add_argument('--max_val_num', default=256, type=int)
     parser.add_argument('-cpu', default=False, action='store_true')
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--weight_decay', type=float, default=5e-5)

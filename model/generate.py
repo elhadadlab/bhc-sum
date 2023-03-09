@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--split', default='test')
     parser.add_argument('--device', default=0, type=int)
 
+    parser.add_argument('--data_max_toks', type=int, default=10000)
     parser.add_argument('--max_input_length', type=int, default=16384)
     parser.add_argument('--max_output_length', type=int, default=512)
     parser.add_argument('--min_length', default=64, type=int)
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     outputs['example_id'] = outputs['patient_id'].astype(str) + '_' + outputs['visit_id'].astype(str)
 
     max_n_suffix = '' if args.max_examples is None else '_' + str(args.max_examples)
-    out_fn = os.path.join(results_dir, f'predictions{mini_str}{max_n_suffix}.csv')
+    out_fn = os.path.join(results_dir, f'predictions{mini_str}{max_n_suffix}_{args.data_max_toks}.csv')
     print(f'Saving {len(outputs)} ROUGE scores and predictions to {out_fn}')
     outputs.to_csv(out_fn, index=False)
     num_col = outputs.select_dtypes('number')

@@ -98,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--max_output_length', type=int, default=1024)
     parser.add_argument('--max_input_length', type=int, default=16384)
+    parser.add_argument('--data_max_toks', type=int, default=10000)
     parser.add_argument('--grad_accum', default=4, type=int)
     parser.add_argument('--hf_name', default='allenai/led-large-16384', choices=[
         'allenai/led-large-16384',

@@ -9,6 +9,8 @@ from transformers import AutoModel, AutoModelForSeq2SeqLM, LongT5ForConditionalG
 from transformers.optimization import get_linear_schedule_with_warmup
 from transformers.trainer_pt_utils import LabelSmoother
 
+from note_seq.utils import prepend_partial
+
 
 class Summarizer(pl.LightningModule):
     def __init__(self, args, tokenizer, hf_name):
@@ -37,21 +39,22 @@ class Summarizer(pl.LightningModule):
         self.label_smoother = LabelSmoother(epsilon=0.1)
 
     def encode_both(self, batch):
-        partial_inputs = {
-            'input_ids': batch.pop('partial_input_ids'),
-            'global_attention_mask': batch.pop('partial_global_attention_mask')
-        }
+        # partial_inputs = {
+        #     'input_ids': batch.pop('partial_input_ids'),
+        #     'global_attention_mask': batch.pop('partial_global_attention_mask')
+        # }
 
         source_inputs = {
             'input_ids': batch.pop('input_ids'),
             'global_attention_mask': batch.pop('global_attention_mask')
         }
-        partial_h = self.model.led.encoder(**partial_inputs)
+        # partial_h = self.model.led.encoder(**partial_inputs)
         source_h = self.model.led.encoder(**source_inputs)
 
-        # Concatenate source encodings
-        partial_h.last_hidden_state = torch.cat([partial_h.last_hidden_state, source_h.last_hidden_state], dim=1)
-        return partial_h
+        # # Concatenate source encodings
+        # partial_h.last_hidden_state = torch.cat([partial_h.last_hidden_state, source_h.last_hidden_state], dim=1)
+        # return partial_h
+        return source_h
 
     def training_step(self, batch, batch_idx):
         batch.pop('curr_note_idx')

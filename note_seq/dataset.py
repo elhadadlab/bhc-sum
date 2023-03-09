@@ -1,12 +1,14 @@
 import os
 import regex as re
 
+import numpy as np
+np.random.seed(1992)
 import pandas as pd
 import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 
 from model.utils import split_into_notes
-from note_seq.utils import Note2NoteCollate
+from note_seq.utils import Note2NoteCollate, prepend_partial
 from data.utils import extract_sorted_notes_from_html, transform_text
 
 
@@ -84,16 +86,15 @@ class SummaryDataModule(pl.LightningDataModule):
 
     def val_dataloader(self, max_n=None, add_cols=None):
         val_df = self.data_df[self.data_df['split'] == 'validation']
-        max_n = min(filter(None, [max_n, self.max_val_num]))
-        if max_n is not None and max_n < len(val_df):
-            print(f'Sampling {max_n} examples out of {len(val_df)}')
-            val_df = val_df.sample(n=max_n, replace=False, random_state=1992)
 
         results = os.path.join(
             self.data_dir, 'bhc_weights', self.partial_experiment, 'results', 'partial_predictions_validation_1024.csv'
         )
         partials = pd.read_csv(results)
         partial_records = self.get_partials(val_df, partials)
+
+        if len(partial_records) > max_n:
+            partial_records = np.random.choice(partial_records, size=(max_n, ), replace=False)
 
         val_split = SummarizationDataset(
             self.note_meta_df, partial_records, self.max_input_length, self.notes_to_select
@@ -134,15 +135,18 @@ class SummarizationDataset(Dataset):
         source_html = extract_sorted_notes_from_html(example['source'], source_note_meta)
 
         notes = split_into_notes(source_html)
-        curr_note_idx = example['curr_note_idx']
-        single_source = notes[curr_note_idx]
+        curr_note_idx = min(example['curr_note_idx'], len(notes) - 1)
+        source_from_curr = '<SEP>'.join(notes[curr_note_idx:])
         partial_str = example['partial']
-        source_str = transform_text(single_source, include_header=True, include_title=True)
+        source_str = transform_text(source_from_curr, include_header=True, include_title=True)
+        updated = prepend_partial(partial_str, source_str)
+
         target_str = transform_text(example['reference'], include_header=False, include_title=False)
+
         row = {
             'curr_note_idx': curr_note_idx,
-            'source': source_str,
-            'partial': partial_str,
+            'source': updated,
+            # 'partial': partial_str,
             'target': target_str,
         }
 

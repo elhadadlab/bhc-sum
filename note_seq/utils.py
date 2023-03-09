@@ -1,6 +1,10 @@
 import torch
 
 
+def prepend_partial(partial, source_str):
+    return f'<doc-sep>Title: Discharge Summary\nBRIEF HOSPITAL COURSE:\n{partial}\n{source_str}'
+
+
 class Note2NoteCollate:
     def __init__(self, tokenizer, add_global_att, max_input_length=16348, max_output_length=512, add_cols=None):
         self.tokenizer = tokenizer
@@ -21,13 +25,13 @@ class Note2NoteCollate:
             return_tensors='pt'
         )
 
-        partial_inputs = self.tokenizer(
-            [x['partial'] for x in batch_list],
-            padding='longest',
-            truncation=True,
-            max_length=self.max_output_length,
-            return_tensors='pt'
-        )
+        # partial_inputs = self.tokenizer(
+        #     [x['partial'] for x in batch_list],
+        #     padding='longest',
+        #     truncation=True,
+        #     max_length=self.max_output_length,
+        #     return_tensors='pt'
+        # )
 
         outputs = self.tokenizer(
             [x['target'] for x in batch_list],
@@ -41,7 +45,7 @@ class Note2NoteCollate:
         batch['input_ids'] = inputs.input_ids
         # batch['attention_mask'] = inputs.attention_mask
 
-        batch['partial_input_ids'] = partial_inputs.input_ids
+        # batch['partial_input_ids'] = partial_inputs.input_ids
         # batch['partial_attention_mask'] = partial_inputs.attention_mask
 
         if self.add_global_att:
@@ -53,13 +57,13 @@ class Note2NoteCollate:
             # the 1st element of each sequence in batch should be flipped to 1
             batch['global_attention_mask'][:, 0] = 1
 
-            # create 0 global_attention_mask lists
-            batch['partial_global_attention_mask'] = torch.FloatTensor(len(batch['partial_input_ids']) * [
-                [0 for _ in range(len(batch['partial_input_ids'][0]))]
-            ])
-
-            # the 1st element of each sequence in batch should be flipped to 1
-            batch['partial_global_attention_mask'][:, 0] = 1
+            # # create 0 global_attention_mask lists
+            # batch['partial_global_attention_mask'] = torch.FloatTensor(len(batch['partial_input_ids']) * [
+            #     [0 for _ in range(len(batch['partial_input_ids'][0]))]
+            # ])
+            #
+            # # the 1st element of each sequence in batch should be flipped to 1
+            # batch['partial_global_attention_mask'][:, 0] = 1
 
         batch['labels'] = outputs.input_ids
         # We have to make sure that the PAD token is ignored
